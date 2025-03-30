@@ -33,13 +33,16 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 # HTMX-freundliche Login-Route
 @router.post("/login-htmx")
-async def login_htmx(request: Request, response: Response, username: str = None, password: str = None):
+async def login_htmx(request: Request, response: Response):
+    form_data = await request.form()
+    username = form_data.get("username")
+    password = form_data.get("password")
+    print(f'{username=}, {password=}, {request.form=}, {response=}', flush=True)
     if not username or not password:
         return templates.TemplateResponse(
             "partials/login_error.html",
             {"request": request, "message": "Bitte füllen Sie alle Felder aus"}
         )
-    print(username, password, flush=True)
 
     with db_session:
         user = entities.User.get(username=username)
@@ -53,7 +56,6 @@ async def login_htmx(request: Request, response: Response, username: str = None,
         access_token = create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
         )
-        print(access_token, flush=True)
 
         # Cookie setzen
         response.set_cookie(
@@ -64,13 +66,11 @@ async def login_htmx(request: Request, response: Response, username: str = None,
             samesite="lax"
         )
 
-        # Erfolgsantwort mit Umleitungs-Header
-        html_response = templates.TemplateResponse(
+        # JavaScript-Weiterleitung zurückgeben
+        return templates.TemplateResponse(
             "partials/login_success.html",
-            {"request": request, "message": "Anmeldung erfolgreich"}
+            {"request": request, "redirect_url": "/dashboard", "message": "Anmeldung erfolgreich"}
         )
-        html_response.headers["HX-Redirect"] = "/dashboard"
-        return html_response
 
 
 @router.get("/logout")

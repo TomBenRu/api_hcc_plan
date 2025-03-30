@@ -6,17 +6,20 @@ import uvicorn
 import os
 
 # PonyORM und Datenmodelle importieren
-from app.database import db
+from app.database import init_database
 from app.models.entities import User, Availability
 
 from app.auth.oauth2 import get_current_user
 from app.api import availability, users
 from app.auth import routes as auth_routes
 
-app = FastAPI(title="HCC Einsatzplanung")
-
 # Debug-Modus
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "t")
+
+# Datenbank initialisieren
+init_database(debug=DEBUG)
+
+app = FastAPI(title="HCC Einsatzplanung")
 
 # Middleware
 app.add_middleware(

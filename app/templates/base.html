@@ -6,7 +6,7 @@
     <title>{% block title %}HCC Einsatzplanung{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
     <!-- HTMX laden -->
-    <script src="{{ url_for('static', path='/js/htmx.min.js') }}"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body>
     <header>
@@ -20,5 +20,15 @@
     <footer>
         {% include "partials/footer.html" %}
     </footer>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof htmx === 'undefined') {
+            console.error('HTMX ist nicht geladen!');
+            alert('WARNUNG: HTMX konnte nicht geladen werden. Die Anwendung funktioniert möglicherweise nicht richtig.');
+        } else {
+            console.log('HTMX geladen, Version:', htmx.version);
+        }
+    });
+</script>
 </body>
 </html>
