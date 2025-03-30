@@ -2,7 +2,7 @@
     <div class="calendar-header">
         <div class="month-navigation">
             <button class="month-nav-btn"
-                    hx-get="/api/availability/calendar"
+                    hx-get="/calendar"
                     hx-vals='{"year": {% if current_month == 1 %}{{ current_year - 1 }}{% else %}{{ current_year }}{% endif %}, "month": {% if current_month == 1 %}12{% else %}{{ current_month - 1 }}{% endif %}}'
                     hx-target="#calendar-container"
                     aria-label="Vorheriger Monat">
@@ -10,7 +10,7 @@
             </button>
             <h2>{{ month_name }} {{ current_year }}</h2>
             <button class="month-nav-btn"
-                    hx-get="/api/availability/calendar"
+                    hx-get="/calendar"
                     hx-vals='{"year": {% if current_month == 12 %}{{ current_year + 1 }}{% else %}{{ current_year }}{% endif %}, "month": {% if current_month == 12 %}1{% else %}{{ current_month + 1 }}{% endif %}}'
                     hx-target="#calendar-container"
                     aria-label="Nächster Monat">

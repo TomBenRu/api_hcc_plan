@@ -194,14 +194,14 @@ async def get_calendar(
 @app.post("/add-availability-htmx")
 async def add_availability_htmx(
         request: Request,
-        current_user=Depends(get_current_user),
-        name: str = None,
-        start_date: str = None,
-        start_time: str = None,
-        end_date: str = None,
-        end_time: str = None
+        current_user=Depends(get_current_user)
 ):
     """HTMX-Endpunkt zum Hinzufügen einer Verfügbarkeit"""
+    form_data = await request.form()
+    name, start_date, start_time, end_date, end_time = (form_data.get("name"), form_data.get("start_date"),
+                                                        form_data.get("start_time"), form_data.get("end_date"),
+                                                        form_data.get("end_time"))
+    print(f"Received data: {name}, {start_date}, {start_time}, {end_date}, {end_time}")
     if not all([name, start_date, start_time, end_date, end_time]):
         return templates.TemplateResponse(
             "partials/error.html",
