@@ -118,29 +118,58 @@ async def get_availability_summary_htmx(
         current_user=Depends(get_current_user)
 ):
     """Liefert eine HTML-Zusammenfassung der Verfügbarkeiten für HTMX"""
-    now = datetime.now()
+    try:
+        now = datetime.now()
 
-    with db_session:
-        query = select(a for a in entities.Availability if a.user.username == current_user["username"])
-        availabilities = list(query)
+        with db_session:
+            # Get username from the user dict
+            username = current_user.get("username")
+            if not username:
+                return templates.TemplateResponse(
+                    "partials/error.html",
+                    {"request": request, "message": "Benutzerdaten konnten nicht geladen werden"}
+                )
 
-        # Pre-process data for the template
-        upcoming_count = sum(1 for a in availabilities if a.start_time > now)
+            # Perform the query
+            query = select(a for a in entities.Availability if a.user.username == username)
+            availabilities = list(query)
 
-        # Get upcoming availabilities (sorted)
-        upcoming = sorted(
-            [a for a in availabilities if a.start_time > now],
-            key=lambda x: x.start_time
-        )[:3]  # Limit to 3
+            # Convert to dicts to avoid any PonyORM-related serialization issues
+            availability_dicts = []
+            upcoming_dicts = []
+            upcoming_count = 0
 
+            for a in availabilities:
+                a_dict = {
+                    "id": a.id,
+                    "name": a.name,
+                    "start_time": a.start_time,
+                    "end_time": a.end_time,
+                    "user_id": a.user.username
+                }
+                availability_dicts.append(a_dict)
+
+                if a.start_time > now:
+                    upcoming_count += 1
+                    upcoming_dicts.append(a_dict)
+
+            # Sort upcoming and limit to 3
+            upcoming_dicts = sorted(upcoming_dicts, key=lambda x: x["start_time"])[:3]
+
+            return templates.TemplateResponse(
+                "partials/availability_summary.html",
+                {
+                    "request": request,
+                    "total_count": len(availability_dicts),
+                    "upcoming_count": upcoming_count,
+                    "upcoming": upcoming_dicts
+                }
+            )
+
+    except Exception as e:
         return templates.TemplateResponse(
-            "partials/availability_summary.html",
-            {
-                "request": request,
-                "total_count": len(availabilities),
-                "upcoming_count": upcoming_count,
-                "upcoming": upcoming
-            }
+            "partials/error.html",
+            {"request": request, "message": f"Fehler beim Laden der Verfügbarkeiten: {str(e)}"}
         )
 
 
