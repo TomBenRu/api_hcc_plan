@@ -1,0 +1,56 @@
+<div class="calendar">
+    <div class="calendar-header">
+        <div class="weekday">Mo</div>
+        <div class="weekday">Di</div>
+        <div class="weekday">Mi</div>
+        <div class="weekday">Do</div>
+        <div class="weekday">Fr</div>
+        <div class="weekday">Sa</div>
+        <div class="weekday">So</div>
+    </div>
+
+    <div class="calendar-body">
+        {% for week in calendar %}
+            <div class="calendar-week">
+                {% for day in week %}
+                    {% if day == 0 %}
+                        <div class="calendar-day empty"></div>
+                    {% else %}
+                        <div class="calendar-day">
+                            <div class="day-number">{{ day }}</div>
+
+                            {% set day_date = "%04d-%02d-%02d"|format(current_year, current_month, day) %}
+                            {% set day_availabilities = [] %}
+
+                            {% for availability in availabilities %}
+                                {% if availability.start_time.strftime('%Y-%m-%d') == day_date %}
+                                    {% do day_availabilities.append(availability) %}
+                                {% endif %}
+                            {% endfor %}
+
+                            <div class="day-availability-list">
+                                {% for availability in day_availabilities %}
+                                    <div class="availability-item">
+                                        <span class="availability-time">
+                                            {{ availability.start_time.strftime('%H:%M') }} -
+                                            {{ availability.end_time.strftime('%H:%M') }}
+                                        </span>
+                                        <span class="availability-name">{{ availability.name }}</span>
+                                        <button
+                                            hx-delete="/api/availability/delete-htmx/{{ availability.id }}"
+                                            hx-target="#calendar-container"
+                                            hx-swap="innerHTML"
+                                            class="delete-availability"
+                                            title="Löschen">
+                                            &times;
+                                        </button>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+</div>

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - HCC Einsatzplanung{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h1>Dashboard</h1>
+
+    <div class="welcome-message">
+        <h2>Willkommen, {{ user.full_name }}!</h2>
+        <p>Hier sehen Sie eine Übersicht Ihrer Daten und Planungen.</p>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Verfügbarkeiten-Karte -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>Meine Verfügbarkeiten</h3>
+            </div>
+            <div class="card-body">
+                <div id="availability-summary" hx-get="/api/availability/" hx-trigger="load" hx-swap="innerHTML">
+                    <p>Verfügbarkeiten werden geladen...</p>
+                </div>
+                <div class="card-actions">
+                    <a href="/availability" class="button">Verfügbarkeiten verwalten</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Einsätze-Karte -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>Meine Einsätze</h3>
+            </div>
+            <div class="card-body">
+                <p>Hier werden Ihre aktuellen und kommenden Einsätze angezeigt.</p>
+                <p class="info-text">Keine aktuellen Einsätze geplant.</p>
+                <div class="card-actions">
+                    <a href="#" class="button button-disabled">Einsätze anzeigen</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fähigkeiten-Karte -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>Meine Fähigkeiten</h3>
+            </div>
+            <div class="card-body">
+                <p>Ihre hinterlegten Fähigkeiten und Qualifikationen.</p>
+                <p class="info-text">Keine Fähigkeiten hinterlegt.</p>
+                <div class="card-actions">
+                    <a href="#" class="button button-disabled">Fähigkeiten verwalten</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benachrichtigungen-Karte -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>Benachrichtigungen</h3>
+            </div>
+            <div class="card-body">
+                <p>Aktuelle Hinweise und Benachrichtigungen.</p>
+                <ul class="notification-list">
+                    <li class="notification-item">
+                        <span class="notification-date">Heute</span>
+                        <span class="notification-text">Willkommen bei der HCC Einsatzplanung!</span>
+                    </li>
+                </ul>
+                <div class="card-actions">
+                    <a href="#" class="button button-disabled">Alle anzeigen</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

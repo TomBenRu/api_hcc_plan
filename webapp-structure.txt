@@ -1,0 +1,43 @@
+api_hcc_plan/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                   # FastAPI Hauptanwendung
+│   ├── config.py                 # Konfigurationseinstellungen
+│   ├── auth/                     # OAuth2 Authentifizierung
+│   │   ├── __init__.py
+│   │   ├── oauth2.py             # OAuth2 Implementierung
+│   │   └── routes.py             # Auth-Routes
+│   ├── api/                      # API Endpoints
+│   │   ├── __init__.py
+│   │   ├── availability.py       # API für Verfügbarkeiten
+│   │   └── users.py              # API für Benutzer
+│   ├── models/                   # Datenmodelle
+│   │   ├── __init__.py
+│   │   ├── availability.py       # Verfügbarkeitsmodell
+│   │   └── user.py               # Benutzermodell
+│   ├── services/                 # Geschäftslogik
+│   │   ├── __init__.py
+│   │   └── availability_service.py
+│   ├── static/                   # Statische Dateien
+│   │   ├── css/
+│   │   │   └── styles.css
+│   │   ├── js/
+│   │   │   └── htmx.min.js
+│   │   └── img/
+│   └── templates/                # Jinja2 Templates
+│       ├── base.html
+│       ├── partials/             # Wiederverwendbare Template-Teile
+│       │   ├── header.html
+│       │   ├── footer.html
+│       │   └── calendar.html
+│       ├── index.html
+│       ├── login.html
+│       ├── dashboard.html
+│       └── availability.html
+├── tests/                        # Tests
+│   ├── __init__.py
+│   ├── test_api.py
+│   └── test_auth.py
+├── requirements.txt
+├── Dockerfile
+└── docker-compose.yml

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HCC Einsatzplanung{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <!-- HTMX laden -->
+    <script src="{{ url_for('static', path='/js/htmx.min.js') }}"></script>
+</head>
+<body>
+    <header>
+        {% include "partials/header.html" %}
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        {% include "partials/footer.html" %}
+    </footer>
+</body>
+</html>
