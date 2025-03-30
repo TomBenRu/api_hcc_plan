@@ -112,6 +112,38 @@ async def delete_availability(
 
 
 # HTMX-Endpunkte für die Weboberfläche
+@router.get("/summary-htmx")
+async def get_availability_summary_htmx(
+        request: Request,
+        current_user=Depends(get_current_user)
+):
+    """Liefert eine HTML-Zusammenfassung der Verfügbarkeiten für HTMX"""
+    now = datetime.now()
+
+    with db_session:
+        query = select(a for a in entities.Availability if a.user.username == current_user["username"])
+        availabilities = list(query)
+
+        # Pre-process data for the template
+        upcoming_count = sum(1 for a in availabilities if a.start_time > now)
+
+        # Get upcoming availabilities (sorted)
+        upcoming = sorted(
+            [a for a in availabilities if a.start_time > now],
+            key=lambda x: x.start_time
+        )[:3]  # Limit to 3
+
+        return templates.TemplateResponse(
+            "partials/availability_summary.html",
+            {
+                "request": request,
+                "total_count": len(availabilities),
+                "upcoming_count": upcoming_count,
+                "upcoming": upcoming
+            }
+        )
+
+
 @router.get("/calendar")
 async def get_calendar(
         request: Request,

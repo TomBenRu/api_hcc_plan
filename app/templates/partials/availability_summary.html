@@ -1,0 +1,19 @@
+{% if total_count > 0 %}
+    <p>Sie haben {{ total_count }} Verfügbarkeiten eingetragen.</p>
+    <p>Davon liegen {{ upcoming_count }} in der Zukunft.</p>
+
+    {% if upcoming_count > 0 %}
+        <p>Nächste Verfügbarkeiten:</p>
+        <ul>
+            {% for a in upcoming %}
+                <li>
+                    <strong>{{ a.name }}</strong>:
+                    {{ a.start_time.strftime('%d.%m.%Y, %H:%M') }} -
+                    {{ a.end_time.strftime('%d.%m.%Y, %H:%M') }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% else %}
+    <p>Keine Verfügbarkeiten eingetragen.</p>
+{% endif %}
