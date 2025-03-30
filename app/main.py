@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 import os
 
-from pony.orm import db_session, select
+from pony.orm import db_session, select, commit
 
 # PonyORM und Datenmodelle importieren
 from app.database import init_database
@@ -116,7 +116,7 @@ async def availability_page(request: Request, current_user=Depends(get_current_u
 
 @app.get("/calendar", response_class=HTMLResponse, name="get_calendar")
 async def get_calendar(
-    request: Request, current_user=Depends(get_current_user), year: str = None, month: str = None
+    request: Request, current_user=Depends(get_current_user), year: int = None, month: int = None
 ):
 
     """Liefert eine Kalenderansicht für HTMX"""
@@ -125,8 +125,8 @@ async def get_calendar(
 
         # Convert string parameters to integers with proper error handling
         try:
-            year_int = int(year) if year is not None else now.year
-            month_int = int(month) if month is not None else now.month
+            year = year or now.year
+            month = month or now.month
         except ValueError:
             return templates.TemplateResponse(
                 "partials/error.html",
@@ -135,13 +135,13 @@ async def get_calendar(
             )
 
         # Validierung
-        if not (1 <= month_int <= 12):
+        if not (1 <= month <= 12):
             return templates.TemplateResponse(
                 "partials/error.html",
                 {"request": request, "message": "Ungültiger Monat"},
                 status_code=400
             )
-        if not (1900 <= year_int <= 2100):
+        if not (1900 <= year <= 2100):
             return templates.TemplateResponse(
                 "partials/error.html",
                 {"request": request, "message": "Ungültiges Jahr"},
@@ -149,13 +149,13 @@ async def get_calendar(
             )
 
         # Kalenderdaten vorbereiten
-        cal = calendar.monthcalendar(year_int, month_int)
-        month_name = calendar.month_name[month_int]
+        cal = calendar.monthcalendar(year, month)
+        month_name = calendar.month_name[month]
 
         # Verfügbarkeiten laden
         with db_session:
-            month_start = datetime(year_int, month_int, 1)
-            month_end = datetime(year_int, month_int + 1, 1) if month_int < 12 else datetime(year_int + 1, 1, 1)
+            month_start = datetime(year, month, 1)
+            month_end = datetime(year, month + 1, 1) if month < 12 else datetime(year + 1, 1, 1)
 
             availabilities = select(a for a in entities.Availability
                                     if a.user.username == current_user["username"]
@@ -174,8 +174,8 @@ async def get_calendar(
             {
                 "request": request,
                 "calendar": cal,
-                "current_year": year_int,
-                "current_month": month_int,
+                "current_year": year,
+                "current_month": month,
                 "month_name": month_name,
                 "availabilities": availability_list
             }
@@ -189,6 +189,101 @@ async def get_calendar(
             },
             status_code=500
         )
+
+
+@app.post("/add-availability-htmx")
+async def add_availability_htmx(
+        request: Request,
+        current_user=Depends(get_current_user),
+        name: str = None,
+        start_date: str = None,
+        start_time: str = None,
+        end_date: str = None,
+        end_time: str = None
+):
+    """HTMX-Endpunkt zum Hinzufügen einer Verfügbarkeit"""
+    if not all([name, start_date, start_time, end_date, end_time]):
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {"request": request, "message": "Alle Felder müssen ausgefüllt sein"}
+        )
+
+    try:
+        start_datetime = datetime.strptime(f"{start_date} {start_time}", "%Y-%m-%d %H:%M")
+        end_datetime = datetime.strptime(f"{end_date} {end_time}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {"request": request, "message": "Ungültiges Datum oder Uhrzeit"}
+        )
+
+    if end_datetime <= start_datetime:
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {"request": request, "message": "Die Endzeit muss nach der Startzeit liegen"}
+        )
+
+    # Verfügbarkeit erstellen
+    with db_session:
+        user = entities.User.get(username=current_user["username"])
+
+        new_availability = entities.Availability(
+            name=name,
+            start_time=start_datetime,
+            end_time=end_datetime,
+            user=user
+        )
+        commit()
+
+    # Aktualisierte Kalenderansicht zurückgeben
+    return await get_calendar(
+        request=request,
+        current_user=current_user,
+        year=start_datetime.year,
+        month=start_datetime.month
+    )
+
+
+@app.delete("/delete-availability-htmx/{availability_id}")
+async def delete_availability_htmx(
+        request: Request,
+        availability_id: int,
+        current_user=Depends(get_current_user)
+):
+    """HTMX-Endpunkt zum Löschen einer Verfügbarkeit"""
+    try:
+        year, month = None, None
+
+        # Verfügbarkeit finden um Monat und Jahr zu bestimmen
+        with db_session:
+            availability = entities.Availability.get(id=availability_id)
+
+            if not availability or availability.user.username != current_user["username"]:
+                return templates.TemplateResponse(
+                    "partials/error.html",
+                    {"request": request, "message": "Verfügbarkeit nicht gefunden"}
+                )
+
+            month = availability.start_time.month
+            year = availability.start_time.year
+
+            # Löschen
+            availability.delete()
+            commit()
+
+        # Aktualisierte Kalenderansicht zurückgeben
+        return await get_calendar(
+            request=request,
+            current_user=current_user,
+            year=year,
+            month=month
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {"request": request, "message": f"Fehler beim Löschen: {str(e)}"}
+        )
+
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

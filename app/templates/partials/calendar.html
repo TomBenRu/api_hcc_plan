@@ -1,34 +1,377 @@
-<div class="calendar">
+<div class="calendar-container">
     <div class="calendar-header">
-        <h2>{{ month_name }} {{ current_year }}</h2>
-    </div>
-    <div class="calendar-grid">
-        <div class="weekdays">
-            <div>Mo</div>
-            <div>Di</div>
-            <div>Mi</div>
-            <div>Do</div>
-            <div>Fr</div>
-            <div>Sa</div>
-            <div>So</div>
+        <div class="month-navigation">
+            <button class="month-nav-btn"
+                    hx-get="/api/availability/calendar"
+                    hx-vals='{"year": {% if current_month == 1 %}{{ current_year - 1 }}{% else %}{{ current_year }}{% endif %}, "month": {% if current_month == 1 %}12{% else %}{{ current_month - 1 }}{% endif %}}'
+                    hx-target="#calendar-container"
+                    aria-label="Vorheriger Monat">
+                &laquo;
+            </button>
+            <h2>{{ month_name }} {{ current_year }}</h2>
+            <button class="month-nav-btn"
+                    hx-get="/api/availability/calendar"
+                    hx-vals='{"year": {% if current_month == 12 %}{{ current_year + 1 }}{% else %}{{ current_year }}{% endif %}, "month": {% if current_month == 12 %}1{% else %}{{ current_month + 1 }}{% endif %}}'
+                    hx-target="#calendar-container"
+                    aria-label="Nächster Monat">
+                &raquo;
+            </button>
         </div>
-        <div class="days">
+
+        <div class="calendar-actions">
+            <button class="add-availability-btn"
+                    onclick="document.getElementById('add-availability-form').classList.toggle('hidden')">
+                Verfügbarkeit hinzufügen
+            </button>
+        </div>
+    </div>
+
+    <!-- Add availability form (hidden by default) -->
+    <div id="add-availability-form" class="availability-form hidden">
+        <form hx-post="/add-availability-htmx" hx-target="#calendar-container">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name">Bezeichnung</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="start_date">Startdatum</label>
+                    <input type="date" id="start_date" name="start_date" required
+                           value="{{ current_year }}-{{ '%02d' % current_month }}-01">
+                </div>
+                <div class="form-group">
+                    <label for="start_time">Startzeit</label>
+                    <input type="time" id="start_time" name="start_time" required value="09:00">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="end_date">Enddatum</label>
+                    <input type="date" id="end_date" name="end_date" required
+                           value="{{ current_year }}-{{ '%02d' % current_month }}-01">
+                </div>
+                <div class="form-group">
+                    <label for="end_time">Endzeit</label>
+                    <input type="time" id="end_time" name="end_time" required value="17:00">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="submit-btn">Speichern</button>
+                <button type="button" class="cancel-btn" onclick="document.getElementById('add-availability-form').classList.add('hidden')">Abbrechen</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="calendar">
+        <div class="weekdays-header">
+            <div class="weekday">Mo</div>
+            <div class="weekday">Di</div>
+            <div class="weekday">Mi</div>
+            <div class="weekday">Do</div>
+            <div class="weekday">Fr</div>
+            <div class="weekday weekend">Sa</div>
+            <div class="weekday weekend">So</div>
+        </div>
+
+        <div class="calendar-grid">
             {% for week in calendar %}
-                {% for day in week %}
-                    <div class="day {% if day == 0 %}empty{% endif %}">
-                        {% if day != 0 %}
-                            {{ day }}
-                            {% for availability in availabilities %}
-                                {% if availability.start_time.day == day %}
-                                    <div class="availability-marker">
-                                        {{ availability.name }}
-                                    </div>
-                                {% endif %}
-                            {% endfor %}
-                        {% endif %}
-                    </div>
-                {% endfor %}
+                <div class="calendar-week">
+                    {% for day in week %}
+                        <div class="calendar-day {% if day == 0 %}empty{% endif %} {% if loop.index > 5 %}weekend{% endif %}">
+                            {% if day != 0 %}
+                                <div class="day-header">
+                                    <span class="day-number">{{ day }}</span>
+                                </div>
+
+                                <div class="day-content">
+                                    {% set day_availabilities = [] %}
+                                    {% for availability in availabilities %}
+                                        {% if availability.start_time.day == day %}
+                                            {% set _ = day_availabilities.append(availability) %}
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if day_availabilities %}
+                                        <div class="day-availability-list">
+                                            {% for availability in day_availabilities %}
+                                                <div class="availability-item">
+                                                    <div class="availability-time">
+                                                        {{ availability.start_time.strftime('%H:%M') }} - {{ availability.end_time.strftime('%H:%M') }}
+                                                    </div>
+                                                    <div class="availability-name">{{ availability.name }}</div>
+                                                    <button class="delete-availability"
+                                                            hx-delete="/delete-availability-htmx/{{ availability.id }}"
+                                                            hx-confirm="Verfügbarkeit wirklich löschen?"
+                                                            hx-target="#calendar-container"
+                                                            aria-label="Löschen">
+                                                        &times;
+                                                    </button>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
             {% endfor %}
         </div>
     </div>
 </div>
+
+<style>
+    .calendar-container {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .month-navigation {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .month-navigation h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        min-width: 200px;
+        text-align: center;
+    }
+
+    .month-nav-btn {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s;
+    }
+
+    .month-nav-btn:hover {
+        background-color: #2980b9;
+    }
+
+    .add-availability-btn {
+        background-color: var(--success-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .add-availability-btn:hover {
+        background-color: #27ae60;
+    }
+
+    .availability-form {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e0e0e0;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .form-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .form-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .submit-btn {
+        background-color: var(--success-color);
+        color: white;
+    }
+
+    .cancel-btn {
+        background-color: #95a5a6;
+        color: white;
+    }
+
+    .weekdays-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        background-color: var(--primary-color);
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+
+    .weekday {
+        padding: 0.7rem;
+        text-align: center;
+        color: white;
+        font-weight: 600;
+    }
+
+    .weekday.weekend {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .calendar-grid {
+        border: 1px solid #e0e0e0;
+        border-top: none;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+
+    .calendar-week {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+    }
+
+    .calendar-day {
+        min-height: 120px;
+        border-right: 1px solid #e0e0e0;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 0.5rem;
+        position: relative;
+    }
+
+    .calendar-day:last-child {
+        border-right: none;
+    }
+
+    .calendar-week:last-child .calendar-day {
+        border-bottom: none;
+    }
+
+    .calendar-day.empty {
+        background-color: #f5f5f5;
+    }
+
+    .calendar-day.weekend {
+        background-color: #f8f9fa;
+    }
+
+    .day-header {
+        margin-bottom: 0.5rem;
+    }
+
+    .day-number {
+        font-weight: bold;
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        text-align: center;
+        line-height: 24px;
+        border-radius: 50%;
+    }
+
+    .day-content {
+        font-size: 0.85rem;
+    }
+
+    .day-availability-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+
+    .availability-item {
+        background-color: #e3f2fd;
+        border-left: 3px solid var(--primary-color);
+        padding: 0.4rem 0.5rem;
+        border-radius: 3px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    .availability-time {
+        font-weight: bold;
+        font-size: 0.8rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .availability-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding-right: 20px;
+    }
+
+    .delete-availability {
+        position: absolute;
+        top: 0.3rem;
+        right: 0.3rem;
+        background: none;
+        border: none;
+        color: #e74c3c;
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
+    }
+
+    .delete-availability:hover {
+        opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+        .calendar-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .month-navigation {
+            justify-content: space-between;
+        }
+
+        .calendar-actions {
+            display: flex;
+            justify-content: center;
+        }
+
+        .calendar-day {
+            min-height: 100px;
+        }
+    }
+</style>
