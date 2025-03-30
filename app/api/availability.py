@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.templating import Jinja2Templates
 from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 from datetime import datetime, date
-from pony.orm import db_session, commit, select
+import calendar
+from pony.orm import db_session, select, commit
 
 from app.auth.oauth2 import get_current_user
 from app.models import entities
@@ -173,46 +176,73 @@ async def get_availability_summary_htmx(
         )
 
 
-@router.get("/calendar")
+@router.get("/calendar", response_class=HTMLResponse)
 async def get_calendar(
-        request: Request,
-        current_user=Depends(get_current_user),
-        year: int = datetime.now().year,
-        month: int = datetime.now().month
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    year: Optional[int] = None,
+    month: Optional[int] = None
 ):
     """Liefert eine Kalenderansicht für HTMX"""
-    # Verfügbarkeiten für den angegebenen Monat abrufen
-    start_date = date(year, month, 1)
-    if month == 12:
-        end_date = date(year + 1, 1, 1)
-    else:
-        end_date = date(year, month + 1, 1)
+    try:
+        now = datetime.now()
+        year_int = year if year is not None else now.year
+        month_int = month if month is not None else now.month
 
-    start_datetime = datetime.combine(start_date, datetime.min.time())
-    end_datetime = datetime.combine(end_date, datetime.min.time())
+        # Validierung
+        if not (1 <= month_int <= 12):
+            return templates.TemplateResponse(
+                "partials/error.html",
+                {"request": request, "message": "Ungültiger Monat"},
+                status_code=400
+            )
+        if not (1900 <= year_int <= 2100):
+            return templates.TemplateResponse(
+                "partials/error.html",
+                {"request": request, "message": "Ungültiges Jahr"},
+                status_code=400
+            )
 
-    with db_session:
-        query = select(a for a in entities.Availability
-                       if a.user.username == current_user["username"]
-                       and a.start_time >= start_datetime
-                       and a.start_time < end_datetime)
+        # Kalenderdaten vorbereiten
+        cal = calendar.monthcalendar(year_int, month_int)
+        month_name = calendar.month_name[month_int]
 
-        availabilities = list(query)
+        # Verfügbarkeiten laden
+        with db_session:
+            month_start = datetime(year_int, month_int, 1)
+            month_end = datetime(year_int, month_int + 1, 1) if month_int < 12 else datetime(year_int + 1, 1, 1)
 
-        # Kalenderlogik erstellen
-        import calendar
-        cal = calendar.monthcalendar(year, month)
+            availabilities = select(a for a in entities.Availability
+                                 if a.user.username == current_user["username"]
+                                 and a.start_time >= month_start
+                                 and a.start_time < month_end)[:]
+
+            availability_list = [{
+                'id': a.id,
+                'name': a.name,
+                'start_time': a.start_time,
+                'end_time': a.end_time
+            } for a in availabilities]
 
         return templates.TemplateResponse(
             "partials/calendar.html",
             {
                 "request": request,
                 "calendar": cal,
-                "availabilities": [a.to_dict() for a in availabilities],
-                "current_month": month,
-                "current_year": year,
-                "month_name": calendar.month_name[month]
+                "current_year": year_int,
+                "current_month": month_int,
+                "month_name": month_name,
+                "availabilities": availability_list
             }
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {
+                "request": request,
+                "message": f"Fehler beim Laden des Kalenders: {str(e)}"
+            },
+            status_code=500
         )
 
 

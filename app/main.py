@@ -90,11 +90,24 @@ async def dashboard(request: Request, current_user=Depends(get_current_user)):
         "availability_summary": availability_summary
     })
 
+
 @app.get("/availability")
-async def availability_page(request: Request, current_user = Depends(get_current_user)):
+async def availability_page(request: Request, current_user=Depends(get_current_user)):
+    # Get current month and year for the calendar
+    now = datetime.now()
+    current_month = now.month
+    current_year = now.year
+
+    # Import calendar to get month name
+    import calendar
+    month_name = calendar.month_name[current_month]
+
     return templates.TemplateResponse("availability.html", {
         "request": request,
-        "user": current_user
+        "user": current_user,
+        "current_month": current_month,
+        "current_year": current_year,
+        "month_name": month_name
     })
 
 if __name__ == "__main__":
