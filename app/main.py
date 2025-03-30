@@ -1,7 +1,10 @@
+import calendar
+
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 import uvicorn
 import os
 
@@ -109,6 +112,83 @@ async def availability_page(request: Request, current_user=Depends(get_current_u
         "current_year": current_year,
         "month_name": month_name
     })
+
+
+@app.get("/calendar", response_class=HTMLResponse, name="get_calendar")
+async def get_calendar(
+    request: Request, current_user=Depends(get_current_user), year: str = None, month: str = None
+):
+
+    """Liefert eine Kalenderansicht für HTMX"""
+    try:
+        now = datetime.now()
+
+        # Convert string parameters to integers with proper error handling
+        try:
+            year_int = int(year) if year is not None else now.year
+            month_int = int(month) if month is not None else now.month
+        except ValueError:
+            return templates.TemplateResponse(
+                "partials/error.html",
+                {"request": request, "message": "Ungültiges Format für Jahr oder Monat"},
+                status_code=400
+            )
+
+        # Validierung
+        if not (1 <= month_int <= 12):
+            return templates.TemplateResponse(
+                "partials/error.html",
+                {"request": request, "message": "Ungültiger Monat"},
+                status_code=400
+            )
+        if not (1900 <= year_int <= 2100):
+            return templates.TemplateResponse(
+                "partials/error.html",
+                {"request": request, "message": "Ungültiges Jahr"},
+                status_code=400
+            )
+
+        # Kalenderdaten vorbereiten
+        cal = calendar.monthcalendar(year_int, month_int)
+        month_name = calendar.month_name[month_int]
+
+        # Verfügbarkeiten laden
+        with db_session:
+            month_start = datetime(year_int, month_int, 1)
+            month_end = datetime(year_int, month_int + 1, 1) if month_int < 12 else datetime(year_int + 1, 1, 1)
+
+            availabilities = select(a for a in entities.Availability
+                                    if a.user.username == current_user["username"]
+                                    and a.start_time >= month_start
+                                    and a.start_time < month_end)[:]
+
+            availability_list = [{
+                'id': a.id,
+                'name': a.name,
+                'start_time': a.start_time,
+                'end_time': a.end_time
+            } for a in availabilities]
+
+        return templates.TemplateResponse(
+            "partials/calendar.html",
+            {
+                "request": request,
+                "calendar": cal,
+                "current_year": year_int,
+                "current_month": month_int,
+                "month_name": month_name,
+                "availabilities": availability_list
+            }
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "partials/error.html",
+            {
+                "request": request,
+                "message": f"Fehler beim Laden des Kalenders: {str(e)}"
+            },
+            status_code=500
+        )
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
