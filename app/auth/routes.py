@@ -38,18 +38,9 @@ async def login_htmx(request: Request):
     form_data = await request.form()
     username, password = form_data.get("username"), form_data.get("password")
 
-    # Form validation omitted for brevity...
-
     with db_session:
         user = entities.User.get(username=username)
         if not user or not verify_password(password, user.hashed_password):
-            # Wenn HTMX aktiv ist, nur den Fehlerteil zurückgeben
-            if request.headers.get("HX-Request") == "true":
-                return templates.TemplateResponse(
-                    "partials/login_error.html",
-                    {"request": request, "message": "Ungültiger Benutzername oder Passwort"}
-                )
-            # Andernfalls die gesamte Seite mit Fehlermeldung
             return templates.TemplateResponse(
                 "partials/login_error.html",
                 {"request": request, "message": "Ungültiger Benutzername oder Passwort"}
@@ -81,9 +72,29 @@ async def login_htmx(request: Request):
 
 
 @router.get("/logout")
-async def logout(response: Response):
-    response.delete_cookie(key="access_token")
-    return {"redirect_url": "/login"}
+async def logout(request: Request, response: Response):
+    """Handles both HTMX and regular logout requests"""
+    # Delete the auth cookie
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite="lax",
+        path="/"  # Ensure cookie is deleted for all paths
+    )
+
+    # Handle HTMX requests
+    if request.headers.get("HX-Request") == "true":
+        response.headers["HX-Redirect"] = "/login"
+        response.status_code = status.HTTP_200_OK  # Status-Code hinzugefügt
+        return response
+    
+    # For regular requests, return template response
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request},
+        status_code=status.HTTP_302_FOUND,
+        headers={"Location": "/login"}
+    )
 
 
 # Hilfsfunktion zum Erstellen eines Test-Benutzers (nur für Entwicklung)
