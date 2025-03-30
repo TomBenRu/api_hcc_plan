@@ -33,31 +33,46 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 # HTMX-freundliche Login-Route
 @router.post("/login-htmx")
-async def login_htmx(request: Request, response: Response):
+async def login_htmx(request: Request):
+    """HTMX-freundlicher Login-Handler mit Fallback für nicht-HTMX-Clients"""
     form_data = await request.form()
-    username = form_data.get("username")
-    password = form_data.get("password")
-    print(f'{username=}, {password=}, {request.form=}, {response=}', flush=True)
+    username, password = form_data.get("username"), form_data.get("password")
     if not username or not password:
+        # Wenn HTMX aktiv ist, nur den Fehlerteil zurückgeben
+        if request.headers.get("HX-Request") == "true":
+            return templates.TemplateResponse(
+                "partials/login_error.html",
+                {"request": request, "message": "Bitte füllen Sie alle Felder aus"}
+            )
+        # Andernfalls die gesamte Seite mit Fehlermeldung
         return templates.TemplateResponse(
-            "partials/login_error.html",
-            {"request": request, "message": "Bitte füllen Sie alle Felder aus"}
+            "login.html",
+            {"request": request, "error_message": "Bitte füllen Sie alle Felder aus"}
         )
 
     with db_session:
         user = entities.User.get(username=username)
         if not user or not verify_password(password, user.hashed_password):
+            # Wenn HTMX aktiv ist, nur den Fehlerteil zurückgeben
+            if request.headers.get("HX-Request") == "true":
+                return templates.TemplateResponse(
+                    "partials/login_error.html",
+                    {"request": request, "message": "Ungültiger Benutzername oder Passwort"}
+                )
+            # Andernfalls die gesamte Seite mit Fehlermeldung
             return templates.TemplateResponse(
                 "partials/login_error.html",
                 {"request": request, "message": "Ungültiger Benutzername oder Passwort"}
             )
 
+        # Token erstellen
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
         )
 
         # Cookie setzen
+        response = Response()
         response.set_cookie(
             key="access_token",
             value=f"Bearer {access_token}",
@@ -66,11 +81,12 @@ async def login_htmx(request: Request, response: Response):
             samesite="lax"
         )
 
-        # JavaScript-Weiterleitung zurückgeben
-        return templates.TemplateResponse(
-            "partials/login_success.html",
-            {"request": request, "redirect_url": "/dashboard", "message": "Anmeldung erfolgreich"}
-        )
+        # Je nachdem, ob HTMX verwendet wird oder nicht
+        if request.headers.get("HX-Request") == "true":
+            # HTMX-Antwort mit Umleitungs-Header
+            response.headers["HX-Redirect"] = "/dashboard"
+            response.body = b"Erfolgreiche Anmeldung"
+            return response
 
 
 @router.get("/logout")
