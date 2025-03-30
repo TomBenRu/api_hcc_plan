@@ -64,11 +64,13 @@ async def login_htmx(request: Request, response: Response, username: str = None,
             samesite="lax"
         )
 
-        # Weiterleitung zur Dashboard-Seite
-        return templates.TemplateResponse(
-            "partials/redirect.html",
-            {"request": request, "redirect_url": "/dashboard"}
+        # Erfolgsantwort mit Umleitungs-Header
+        html_response = templates.TemplateResponse(
+            "partials/login_success.html",
+            {"request": request, "message": "Anmeldung erfolgreich"}
         )
+        html_response.headers["HX-Redirect"] = "/dashboard"
+        return html_response
 
 
 @router.get("/logout")
