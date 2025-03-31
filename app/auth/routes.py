@@ -66,7 +66,7 @@ async def login_htmx(request: Request):
 
         # Add redirect header for HTMX
         if request.headers.get("HX-Request") == "true":
-            response.headers["HX-Redirect"] = "/dashboard"
+            response.headers["HX-Redirect"] = "/api/dashboard"
 
         return response  # Make sure to return the response in all cases
 

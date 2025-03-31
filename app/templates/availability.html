@@ -6,7 +6,7 @@
     
     <div id="calendar-container">
         <!-- Initial calendar load -->
-        <div hx-get="/calendar"
+        <div hx-get="/api/availability/calendar"
              hx-target="#calendar-container"
              hx-trigger="load"
              hx-vals='{"year": "{{ current_year }}", "month": "{{ current_month }}"}'

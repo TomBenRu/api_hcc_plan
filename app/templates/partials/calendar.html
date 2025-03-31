@@ -2,7 +2,7 @@
     <div class="calendar-header">
         <div class="month-navigation">
             <button class="month-nav-btn"
-                    hx-get="/calendar"
+                    hx-get="/api/availability/calendar"
                     hx-vals='{"year": {% if current_month == 1 %}{{ current_year - 1 }}{% else %}{{ current_year }}{% endif %}, "month": {% if current_month == 1 %}12{% else %}{{ current_month - 1 }}{% endif %}}'
                     hx-target="#calendar-container"
                     aria-label="Vorheriger Monat">
@@ -10,7 +10,7 @@
             </button>
             <h2>{{ month_name }} {{ current_year }}</h2>
             <button class="month-nav-btn"
-                    hx-get="/calendar"
+                    hx-get="/api/availability/calendar"
                     hx-vals='{"year": {% if current_month == 12 %}{{ current_year + 1 }}{% else %}{{ current_year }}{% endif %}, "month": {% if current_month == 12 %}1{% else %}{{ current_month + 1 }}{% endif %}}'
                     hx-target="#calendar-container"
                     aria-label="Nächster Monat">
@@ -28,7 +28,7 @@
 
     <!-- Add availability form (hidden by default) -->
     <div id="add-availability-form" class="availability-form hidden">
-        <form hx-post="/add-availability-htmx" hx-target="#calendar-container">
+        <form hx-post="/api/availability/add-availability-htmx" hx-target="#calendar-container">
             <div class="form-row">
                 <div class="form-group">
                     <label for="name">Bezeichnung</label>
@@ -105,7 +105,7 @@
                                                     </div>
                                                     <div class="availability-name">{{ availability.name }}</div>
                                                     <button class="delete-availability"
-                                                            hx-delete="/delete-availability-htmx/{{ availability.id }}"
+                                                            hx-delete="/api/availability/delete-availability-htmx/{{ availability.id }}"
                                                             hx-confirm="Verfügbarkeit wirklich löschen?"
                                                             hx-target="#calendar-container"
                                                             aria-label="Löschen">

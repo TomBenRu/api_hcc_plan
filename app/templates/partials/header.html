@@ -5,8 +5,8 @@
 
     <ul class="nav-links">
         {% if request.cookies.get('access_token') %}
-            <li><a href="/dashboard">Dashboard</a></li>
-            <li><a href="/availability">Verfügbarkeiten</a></li>
+            <li><a href="/api/dashboard">Dashboard</a></li>
+            <li><a href="/api/availability/page">Verfügbarkeiten</a></li>
             <li><a href="#" hx-get="/auth/logout" hx-push-url="true" hx-target="body">Abmelden</a></li>
         {% else %}
             <li><a href="/login">Anmelden</a></li>
